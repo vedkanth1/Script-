@@ -67,36 +67,136 @@ local Toggle = mainTab:CreateToggle({
    CurrentValue = false,
    Flag = "Toggle1", -- A flag is the identifier for the configuration file; make sure every element has a different flag if you're using configuration saving to ensure no overlaps
    Callback = function(Value)
-   local Players = game:GetService("Players")
+  local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- Put your Roblox UserId here so only you can use the test abilities.
-local ADMINS = {
-	[2753915549] = true, -- CHANGE THIS
-}
+local player = Players.LocalPlayer
 
-local function isAdmin(player)
-	return ADMINS[player.UserId] == true
+local enabled = false
+local flying = false
+
+local flySpeed = 80
+local attackRange = 150
+local attackCooldown = 0.15
+
+local character
+local humanoid
+local root
+
+local function setupCharacter(char)
+	character = char
+	humanoid = char:WaitForChild("Humanoid")
+	root = char:WaitForChild("HumanoidRootPart")
 end
 
-Players.PlayerAdded:Connect(function(player)
-	if not isAdmin(player) then
+setupCharacter(player.Character or player.CharacterAdded:Wait())
+player.CharacterAdded:Connect(setupCharacter)
+
+-- Toggle with F
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
 		return
 	end
 
-	player.CharacterAdded:Connect(function(character)
-		local humanoid = character:WaitForChild("Humanoid")
+	if input.KeyCode == Enum.KeyCode.F then
+		enabled = not enabled
+		flying = enabled
 
-		-- Unlimited health for testing
-		humanoid.MaxHealth = math.huge
-		humanoid.Health = math.huge
+		print("Sea Beast test mode:", enabled and "ON" or "OFF")
+	end
+end)
 
-		humanoid.HealthChanged:Connect(function()
-			if humanoid.Health < math.huge then
-				humanoid.Health = math.huge
+-- Flight
+RunService.RenderStepped:Connect(function()
+	if not enabled or not flying or not root then
+		return
+	end
+
+	local camera = workspace.CurrentCamera
+
+	local direction = Vector3.zero
+
+	if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+		direction += camera.CFrame.LookVector
+	end
+
+	if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+		direction -= camera.CFrame.LookVector
+	end
+
+	if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+		direction -= camera.CFrame.RightVector
+	end
+
+	if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+		direction += camera.CFrame.RightVector
+	end
+
+	if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+		direction += Vector3.yAxis
+	end
+
+	if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+		direction -= Vector3.yAxis
+	end
+
+	if direction.Magnitude > 0 then
+		root.AssemblyLinearVelocity = direction.Unit * flySpeed
+	else
+		root.AssemblyLinearVelocity = Vector3.zero
+	end
+end)
+
+-- Find nearest Sea Beast
+local function getNearestSeaBeast()
+	if not root then
+		return nil
+	end
+
+	local nearest
+	local nearestDistance = attackRange
+
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("Model") and obj.Name == "Sea Beast" then
+			local beastRoot =
+				obj:FindFirstChild("HumanoidRootPart")
+				or obj.PrimaryPart
+
+			local beastHumanoid = obj:FindFirstChildOfClass("Humanoid")
+
+			if beastRoot and beastHumanoid and beastHumanoid.Health > 0 then
+				local distance = (root.Position - beastRoot.Position).Magnitude
+
+				if distance < nearestDistance then
+					nearest = obj
+					nearestDistance = distance
+				end
 			end
-		end)
-	end)
+		end
+	end
+
+	return nearest
+end
+
+-- Auto attack
+task.spawn(function()
+	while true do
+		if enabled then
+			local beast = getNearestSeaBeast()
+
+			if beast then
+				-- Replace this with your game's actual attack function/RemoteEvent.
+				-- Example:
+				--
+				-- game.ReplicatedStorage.Remotes.AttackSeaBeast:FireServer(beast)
+
+				print("Attacking:", beast:GetFullName())
+			end
+		end
+
+		task.wait(attackCooldown)
+	end
 end)
    -- The variable (Value) is a boolean on whether the toggle is true or false
    end,
