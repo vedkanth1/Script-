@@ -67,135 +67,187 @@ local Toggle = mainTab:CreateToggle({
    CurrentValue = false,
    Flag = "Toggle1", -- A flag is the identifier for the configuration file; make sure every element has a different flag if you're using configuration saving to ensure no overlaps
    Callback = function(Value)
-  local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
+ -- NPC Auto Farm System
+-- For your own Roblox game
+
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local player = Players.LocalPlayer
+local NPC_FOLDER = workspace:WaitForChild("NPCs")
 
-local enabled = false
-local flying = false
+local ATTACK_RANGE = 12
+local TARGET_RANGE = 250
+local ATTACK_COOLDOWN = 0.35
+local MOVE_DISTANCE = 8
 
-local flySpeed = 80
-local attackRange = 150
-local attackCooldown = 0.15
+local playerData = {}
 
-local character
-local humanoid
-local root
-
-local function setupCharacter(char)
-	character = char
-	humanoid = char:WaitForChild("Humanoid")
-	root = char:WaitForChild("HumanoidRootPart")
+local function getCharacter(player)
+	return player.Character
 end
 
-setupCharacter(player.Character or player.CharacterAdded:Wait())
-player.CharacterAdded:Connect(setupCharacter)
+local function getRoot(character)
+	return character and character:FindFirstChild("HumanoidRootPart")
+end
 
--- Toggle with F
-UserInputService.InputBegan:Connect(function(input, processed)
-	if processed then
-		return
-	end
+local function getHumanoid(character)
+	return character and character:FindFirstChildOfClass("Humanoid")
+end
 
-	if input.KeyCode == Enum.KeyCode.F then
-		enabled = not enabled
-		flying = enabled
+local function isAlive(model)
+	local humanoid = getHumanoid(model)
+	return humanoid and humanoid.Health > 0
+end
 
-		print("Sea Beast test mode:", enabled and "ON" or "OFF")
-	end
-end)
+local function getNearestNPC(player)
+	local character = getCharacter(player)
+	local root = getRoot(character)
 
--- Flight
-RunService.RenderStepped:Connect(function()
-	if not enabled or not flying or not root then
-		return
-	end
-
-	local camera = workspace.CurrentCamera
-
-	local direction = Vector3.zero
-
-	if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-		direction += camera.CFrame.LookVector
-	end
-
-	if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-		direction -= camera.CFrame.LookVector
-	end
-
-	if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-		direction -= camera.CFrame.RightVector
-	end
-
-	if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-		direction += camera.CFrame.RightVector
-	end
-
-	if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-		direction += Vector3.yAxis
-	end
-
-	if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-		direction -= Vector3.yAxis
-	end
-
-	if direction.Magnitude > 0 then
-		root.AssemblyLinearVelocity = direction.Unit * flySpeed
-	else
-		root.AssemblyLinearVelocity = Vector3.zero
-	end
-end)
-
--- Find nearest Sea Beast
-local function getNearestSeaBeast()
 	if not root then
 		return nil
 	end
 
-	local nearest
-	local nearestDistance = attackRange
+	local closest = nil
+	local closestDistance = TARGET_RANGE
 
-	for _, obj in ipairs(workspace:GetDescendants()) do
-		if obj:IsA("Model") and obj.Name == "Sea Beast" then
-			local beastRoot =
-				obj:FindFirstChild("HumanoidRootPart")
-				or obj.PrimaryPart
+	for _, npc in ipairs(NPC_FOLDER:GetChildren()) do
+		local npcRoot = getRoot(npc)
 
-			local beastHumanoid = obj:FindFirstChildOfClass("Humanoid")
+		if npcRoot and isAlive(npc) then
+			local distance = (root.Position - npcRoot.Position).Magnitude
 
-			if beastRoot and beastHumanoid and beastHumanoid.Health > 0 then
-				local distance = (root.Position - beastRoot.Position).Magnitude
-
-				if distance < nearestDistance then
-					nearest = obj
-					nearestDistance = distance
-				end
+			if distance < closestDistance then
+				closest = npc
+				closestDistance = distance
 			end
 		end
 	end
 
-	return nearest
+	return closest
 end
 
--- Auto attack
-task.spawn(function()
-	while true do
-		if enabled then
-			local beast = getNearestSeaBeast()
+local function attackNPC(player, npc)
+	local character = getCharacter(player)
+	local root = getRoot(character)
 
-			if beast then
-				-- Replace this with your game's actual attack function/RemoteEvent.
-				-- Example:
-				--
-				-- game.ReplicatedStorage.Remotes.AttackSeaBeast:FireServer(beast)
+	if not root or not npc then
+		return
+	end
 
-				print("Attacking:", beast:GetFullName())
-			end
+	local npcRoot = getRoot(npc)
+	local npcHumanoid = getHumanoid(npc)
+
+	if not npcRoot or not npcHumanoid or npcHumanoid.Health <= 0 then
+		return
+	end
+
+	local distance = (root.Position - npcRoot.Position).Magnitude
+
+	if distance <= ATTACK_RANGE then
+		-- Replace this with your game's actual combat system.
+		npcHumanoid:TakeDamage(10)
+	end
+end
+
+local function moveToNPC(player, npc)
+	local character = getCharacter(player)
+	local humanoid = getHumanoid(character)
+	local root = getRoot(character)
+	local npcRoot = getRoot(npc)
+
+	if not humanoid or not root or not npcRoot then
+		return
+	end
+
+	local direction = (root.Position - npcRoot.Position)
+
+	if direction.Magnitude < 0.1 then
+		direction = Vector3.new(0, 0, 1)
+	end
+
+	direction = direction.Unit
+
+	local destination =
+		npcRoot.Position
+		+ direction * MOVE_DISTANCE
+
+	humanoid:MoveTo(destination)
+end
+
+Players.PlayerAdded:Connect(function(player)
+	playerData[player] = {
+		Enabled = false,
+		LastAttack = 0,
+		Target = nil
+	}
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	playerData[player] = nil
+end)
+
+RunService.Heartbeat:Connect(function()
+	for player, data in pairs(playerData) do
+		if not data.Enabled then
+			continue
 		end
 
-		task.wait(attackCooldown)
+		local character = getCharacter(player)
+		local humanoid = getHumanoid(character)
+
+		if not character or not humanoid or humanoid.Health <= 0 then
+			data.Target = nil
+			continue
+		end
+
+		-- Find a new target.
+		if not data.Target or not isAlive(data.Target) then
+			data.Target = getNearestNPC(player)
+		end
+
+		local target = data.Target
+
+		if not target then
+			continue
+		end
+
+		local root = getRoot(character)
+		local targetRoot = getRoot(target)
+
+		if not root or not targetRoot then
+			data.Target = nil
+			continue
+		end
+
+		local distance = (root.Position - targetRoot.Position).Magnitude
+
+		-- Target moved too far away.
+		if distance > TARGET_RANGE then
+			data.Target = nil
+			continue
+		end
+
+		if distance > ATTACK_RANGE then
+			moveToNPC(player, target)
+		else
+			humanoid:MoveTo(root.Position)
+
+			if os.clock() - data.LastAttack >= ATTACK_COOLDOWN then
+				data.LastAttack = os.clock()
+				attackNPC(player, target)
+			end
+		end
+	end
+end)
+
+-- Public API through BindableEvent.
+local toggleEvent = Instance.new("BindableEvent")
+toggleEvent.Name = "ToggleAutoFarm"
+toggleEvent.Parent = script
+
+toggleEvent.Event:Connect(function(player, enabled)
+	if playerData[player] then
+		playerData[player].Enabled = enabled
 	end
 end)
    -- The variable (Value) is a boolean on whether the toggle is true or false
