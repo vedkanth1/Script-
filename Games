@@ -62,9 +62,14 @@ local Button = mainTab:CreateButton({
    end,
 })
 
-local Button = mainTab:CreateButton({
-   Name = "1+ keyboard escape ⌨️",
+local PlayerTab = Window:CreateTab("GO BACK 🍁", nil) -- Title, Image
+
+
+local Button = PlayerTab:CreateButton({
+   Name = "Go to HUB 🏠",
    Callback = function()
-   -- The function that takes place when the button is pressed
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/vedkanth1/Main-script-roblox/refs/heads/main/Main%20script%20Roblox.txt"))()
    end,
 })
+
+
