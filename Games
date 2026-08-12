@@ -62,6 +62,46 @@ local Button = mainTab:CreateButton({
    end,
 })
 
+local Toggle = mainTab:CreateToggle({
+   Name = "Sea Beast 🐉",
+   CurrentValue = false,
+   Flag = "Toggle1", -- A flag is the identifier for the configuration file; make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+   Callback = function(Value)
+   local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+-- Put your Roblox UserId here so only you can use the test abilities.
+local ADMINS = {
+	[2753915549] = true, -- CHANGE THIS
+}
+
+local function isAdmin(player)
+	return ADMINS[player.UserId] == true
+end
+
+Players.PlayerAdded:Connect(function(player)
+	if not isAdmin(player) then
+		return
+	end
+
+	player.CharacterAdded:Connect(function(character)
+		local humanoid = character:WaitForChild("Humanoid")
+
+		-- Unlimited health for testing
+		humanoid.MaxHealth = math.huge
+		humanoid.Health = math.huge
+
+		humanoid.HealthChanged:Connect(function()
+			if humanoid.Health < math.huge then
+				humanoid.Health = math.huge
+			end
+		end)
+	end)
+end)
+   -- The variable (Value) is a boolean on whether the toggle is true or false
+   end,
+})
+
 local PlayerTab = Window:CreateTab("GO BACK 🍁", nil) -- Title, Image
 
 
