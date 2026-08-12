@@ -1,7 +1,7 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "🏠 CHANGED HUB",
+   Name = "Blox Fruit 🍓",
    Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
    LoadingTitle = "ITACHI HUB",
    LoadingSubtitle = "By Changed",
@@ -27,7 +27,7 @@ local Window = Rayfield:CreateWindow({
       RememberJoins = true -- Set this to false to make them join the Discord every time they load it up
    },
 
-   KeySystem = true, -- Set this to true to use our key system
+   KeySystem = false, -- Set this to true to use our key system
    KeySettings = {
       Title = "ITACHI HUB",
       Subtitle = "By Changed",
@@ -39,10 +39,10 @@ local Window = Rayfield:CreateWindow({
    }
 })
 
-local mainTab = Window:CreateTab("Games 🔫", nil) -- Title, Image
+local mainTab = Window:CreateTab("Auto Farm 🦈", nil) -- Title, Image
     
     Rayfield:Notify({
-   Title = "You have opened the script",
+   Title = "You have opened Blox Fruit 🍓",
    Content = "Use the script",
    Duration = 6.5,
    Image = nil,
